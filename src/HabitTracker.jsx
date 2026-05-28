@@ -8,41 +8,25 @@ const CheckIcon = () => (
   </svg>
 );
 
-export default function HabitTracker({ habits, setHabits, completions, setCompletions }) {
+export default function HabitTracker({ habits, completions, onToggle, onAdd, onDelete, onEdit }) {
   const [showModal, setShowModal] = useState(false);
   const [selectedDay, setSelectedDay] = useState(formatDateKey());
+  const [activeMenuId, setActiveMenuId] = useState(null);
+  const [habitToEdit, setHabitToEdit] = useState(null);
   const weekDays = useMemo(() => getWeekDays(), []);
   const todayKey = formatDateKey();
 
   const toggleHabit = (habitId) => {
-    const key = `${habitId}_${selectedDay}`;
-    setCompletions((prev) => {
-      const updated = { ...prev };
-      if (updated[key]) {
-        delete updated[key];
-      } else {
-        updated[key] = true;
-      }
-      return updated;
-    });
+    onToggle(habitId, selectedDay);
   };
 
   const addHabit = (habit) => {
-    setHabits((prev) => [...prev, habit]);
+    onAdd(habit);
   };
 
   const deleteHabit = (habitId) => {
-    setHabits((prev) => prev.filter((h) => h.id !== habitId));
-    // Also clean up completions for this habit
-    setCompletions((prev) => {
-      const updated = { ...prev };
-      Object.keys(updated).forEach((key) => {
-        if (key.startsWith(habitId + '_')) {
-          delete updated[key];
-        }
-      });
-      return updated;
-    });
+    onDelete(habitId);
+    setActiveMenuId(null);
   };
 
   const completedToday = habits.filter(
@@ -115,6 +99,7 @@ export default function HabitTracker({ habits, setHabits, completions, setComple
           {habits.map((habit) => {
             const isCompleted = !!completions[`${habit.id}_${selectedDay}`];
             const streak = calculateStreak(habit.id, completions);
+            const isMenuOpen = activeMenuId === habit.id;
             return (
               <div
                 key={habit.id}
@@ -135,27 +120,73 @@ export default function HabitTracker({ habits, setHabits, completions, setComple
                     {streak === 0 && <span>Sin racha aún</span>}
                   </div>
                 </div>
+
+                {/* Options Menu (Three Dots) */}
+                <div className="habit-menu-container">
+                  <button
+                    className="habit-menu-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveMenuId(isMenuOpen ? null : habit.id);
+                    }}
+                    title="Opciones"
+                  >
+                    ⋮
+                  </button>
+                  {isMenuOpen && (
+                    <>
+                      <div 
+                        className="menu-backdrop" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(null);
+                        }} 
+                      />
+                      <div className="habit-menu-dropdown">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setHabitToEdit(habit);
+                            setActiveMenuId(null);
+                          }}
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          className="delete-opt"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`¿Estás seguro de que quieres eliminar el hábito "${habit.name}"?`)) {
+                              deleteHabit(habit.id);
+                            }
+                          }}
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 <div className={`habit-check${isCompleted ? ' checked' : ''}`}>
                   {isCompleted && <CheckIcon />}
                 </div>
-                <button
-                  className="habit-delete"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteHabit(habit.id);
-                  }}
-                  title="Eliminar"
-                >
-                  ✕
-                </button>
               </div>
             );
           })}
         </div>
       )}
 
-      {showModal && (
-        <AddHabitModal onClose={() => setShowModal(false)} onAdd={addHabit} />
+      {(showModal || habitToEdit) && (
+        <AddHabitModal 
+          onClose={() => {
+            setShowModal(false);
+            setHabitToEdit(null);
+          }} 
+          onAdd={addHabit}
+          onEdit={onEdit}
+          habitToEdit={habitToEdit}
+        />
       )}
     </>
   );

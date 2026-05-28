@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const HABIT_EMOJIS = [
   '💪', '📖', '🧘', '💧', '🏃', '🥗',
@@ -6,19 +6,35 @@ const HABIT_EMOJIS = [
   '💊', '🎵', '📱', '🧹', '💰', '🙏',
 ];
 
-export default function AddHabitModal({ onClose, onAdd }) {
+export default function AddHabitModal({ onClose, onAdd, habitToEdit, onEdit }) {
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('💪');
+
+  useEffect(() => {
+    if (habitToEdit) {
+      setName(habitToEdit.name);
+      setEmoji(habitToEdit.emoji);
+    }
+  }, [habitToEdit]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onAdd({
-      id: Date.now().toString(),
-      name: name.trim(),
-      emoji,
-      createdAt: new Date().toISOString(),
-    });
+
+    if (habitToEdit) {
+      onEdit({
+        ...habitToEdit,
+        name: name.trim(),
+        emoji,
+      });
+    } else {
+      onAdd({
+        id: Date.now().toString(),
+        name: name.trim(),
+        emoji,
+        createdAt: new Date().toISOString(),
+      });
+    }
     onClose();
   };
 
@@ -26,7 +42,9 @@ export default function AddHabitModal({ onClose, onAdd }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-handle" />
-        <h2 className="modal-title">Nuevo Hábito</h2>
+        <h2 className="modal-title">
+          {habitToEdit ? 'Editar Hábito' : 'Nuevo Hábito'}
+        </h2>
 
         <form onSubmit={handleSubmit}>
           <div className="modal-field">
@@ -59,7 +77,7 @@ export default function AddHabitModal({ onClose, onAdd }) {
           </div>
 
           <button type="submit" className="modal-submit" id="submit-habit">
-            Crear Hábito
+            {habitToEdit ? 'Guardar Cambios' : 'Crear Hábito'}
           </button>
           <button type="button" className="modal-cancel" onClick={onClose}>
             Cancelar
